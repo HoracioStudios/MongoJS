@@ -11,9 +11,9 @@ var dataCollection = "data";
 
 const DEBUGLOG = false;
 
-function init(ip = "localhost", port = "27017", database = "tefege", playerCol = "players", dataCol = "data")
+function init(uri_ = "mongodb://localhost:27017?retryWrites=true&writeConcern=majority", database = "tefege", playerCol = "players", dataCol = "data")
 {
-  uri = "mongodb://" + ip + ":" + port + "?retryWrites=true&writeConcern=majority";
+  uri = uri_;
 
   databaseName = database;
   playerCollection = playerCol;
@@ -646,8 +646,6 @@ async function getUserCount()
 //FUNCIONES DEPENDIENTES DEL JUEGO: estas funciones son 100% dependientes del juego, lo que hagan estas no se puede aplicar a otros juegos
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const using_round_results = false;
-
 //añade el array gameResults al array pending del jugador con id playerID, esta función depende del 
 async function updatePlayerResults(playerID, gameResult)
 {
@@ -659,34 +657,66 @@ async function updatePlayerResults(playerID, gameResult)
         var win, loss, draw;
         win = loss = draw = 0;
 
-		let total = 0, count = 0;
+        let total = 0, count = 0;
 
-		gameResult.rounds.forEach(round => {
-			total += round.result;
-			count++;
-		});
-		
-		let avg = total / count;
-		if(avg > 0.5) win++;
-		else if (avg < 0.5) loss++;
-		else draw++;		   
+        let addTime = 0;
+
+        gameResult.rounds.forEach(round => {
+          total += round.result;
+          count++;
+
+          addTime += round.time;
+        });
+
+        addTime = addTime / 3.0;
+
+        let avg = total / count;
+        if(avg > 0.5) win++;
+        else if (avg < 0.5) loss++;
+        else draw++;
 
         var database = client.db(databaseName);
         var collection = database.collection(playerCollection);
 
         // busca el id exacto del jugador
         var filter = { id: playerID };
-        
-        var options = {
-          // this option instructs the method to create a document if no documents match the filter
-          // upsert: true
+        var options = { };
+        var update = {
+          $push: { pending: gameResult },
+          $inc : { wins: win, losses: loss, draws: draw, totalTime: addTime, totalGames: 1, totalAccuracy: gameResult.accuracy, totalDmg: gameResult.dmgDealt },
+          $set: { lastGame: (new Date()).toString() }
         };
 
-        //contadores de ganar/perder/empate
-        var update = { $push: { pending: gameResult }, $inc : { wins: win, losses: loss, draws: draw }, $set: { lastGame: (new Date()).toString() } };
-        //var update = { $push: { pending: { $each: gameResults } }, $add? };
+        var playerChar = gameResult.playerChar.replace(' ', '').replace("(Clone)", '');
+        var rivalChar = gameResult.rivalChar.replace(' ', '').replace("(Clone)", '');
+
+        update.$inc["characterInfo." + playerChar + ".totalGames"] = 1;
+        update.$inc["characterInfo." + playerChar + ".wins"] = win;
+        update.$inc["characterInfo." + playerChar + ".losses"] = loss;
+        update.$inc["characterInfo." + playerChar + ".draws"] = draw;
+        update.$inc["characterInfo." + playerChar + ".totalTime"] = addTime;
+        update.$inc["characterInfo." + playerChar + ".totalAccuracy"] = gameResult.accuracy;
+        update.$inc["characterInfo." + playerChar + ".totalDmg"] = gameResult.dmgDealt;
+        update.$inc["characterInfo." + playerChar + "." + rivalChar + ".totalGames"] = 1;
+        update.$inc["characterInfo." + playerChar + "." + rivalChar + ".wins"] = win;
 
         var result = await collection.updateOne(filter, update, options);
+
+        collection = database.collection(dataCollection);
+
+        update = { $inc: {} };
+
+        update.$inc["characterInfo." + playerChar + ".totalGames"] = 1;
+        update.$inc["characterInfo." + playerChar + ".wins"] = win;
+        update.$inc["characterInfo." + playerChar + ".losses"] = loss;
+        update.$inc["characterInfo." + playerChar + ".draws"] = draw;
+        update.$inc["characterInfo." + playerChar + ".totalTime"] = addTime;
+        update.$inc["characterInfo." + playerChar + ".totalAccuracy"] = gameResult.accuracy;
+        update.$inc["characterInfo." + playerChar + ".totalDmg"] = gameResult.dmgDealt;
+        update.$inc["characterInfo." + playerChar + "." + rivalChar + ".totalGames"] = 1;
+        update.$inc["characterInfo." + playerChar + "." + rivalChar + ".wins"] = win;
+
+        var result = await collection.updateOne({}, update, options);
 
         if(DEBUGLOG)
             console.log(`${result.matchedCount} document(s) matched the filter, updated ${result.modifiedCount} document(s)`);
