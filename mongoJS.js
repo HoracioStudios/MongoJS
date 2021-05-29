@@ -11,6 +11,15 @@ var dataCollection = "data";
 
 const DEBUGLOG = false;
 
+function init(ip = "localhost", port = "27017", database = "tefege", playerCol = "players", dataCol = "data")
+{
+  uri = "mongodb://" + ip + ":" + port + "?retryWrites=true&writeConcern=majority";
+
+  databaseName = database;
+  playerCollection = playerCol;
+  dataCollection = dataCol;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //FUNCIONES INDEPENDIENTES DEL JUEGO: estas funciones son 100% independientes del juego, se puede aplicar a otros juegos
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -762,7 +771,7 @@ async function test()
 //test().catch(console.dir);
 */
 
-module.exports = {
+module.exports = { init,
   lastT, logUpdate, logLogin, findPlayer, findPlayerSafe, findPlayerByLogin, findPlayersInRange, wipePlayerData, wipePlayerPending, deletePlayerByID, deletePlayer,
   updatePlayerRating, updatePlayerResults, isNickAvailable, isEmailAvailable, addPlayer, getAllPlayerIDs,
   getAllPlayers, getPlayerIDsWithHistory, getPlayerIDsWithPending, getPlayersWithHistory,
