@@ -3,11 +3,11 @@ const { MongoClient } = require("mongodb");
 
 // la "URL" (uri) de la base de datos
 //const uri = "mongodb+srv://<user>:<password>@<cluster-url>?retryWrites=true&writeConcern=majority";
-const uri = "mongodb://localhost:27017?retryWrites=true&writeConcern=majority";
+var uri = "mongodb://localhost:27017?retryWrites=true&writeConcern=majority";
 
-const databaseName = "tefege";
-const playerCollection = "players";
-const dataCollection = "data";
+var databaseName = "tefege";
+var playerCollection = "players";
+var dataCollection = "data";
 
 const DEBUGLOG = false;
 
