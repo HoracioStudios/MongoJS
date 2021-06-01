@@ -648,7 +648,6 @@ async function getPlayerIDsWithHistory()
       return ret;
 }
 
-//devuelve un array con todos los ids de los jugadores que tengan elementos en history
 async function getUserCount()
 {
     let client = new MongoClient(uri);
@@ -663,6 +662,25 @@ async function getUserCount()
 
       if(count === null) count = 0;
       else count = count.playerCount;
+
+      } finally {
+        await client.close();
+      }
+
+      return count;
+}
+
+async function getData()
+{
+    let client = new MongoClient(uri);
+
+    try {
+      await client.connect();
+
+      var database = client.db(databaseName);
+      var collection = database.collection(dataCollection);
+
+      var count = await collection.findOne({}, {});
 
       } finally {
         await client.close();
@@ -792,5 +810,5 @@ module.exports = { init,
   lastT, logUpdate, logLogin, findPlayer, findPlayerSafe, findPlayerByLogin, findPlayersInRange, wipePlayerData, wipePlayerPending, deletePlayerByID, deletePlayer,
   updatePlayerRating, updatePlayerResults, isNickAvailable, isEmailAvailable, addPlayer, getAllPlayerIDs,
   getAllPlayers, getPlayerIDsWithHistory, getPlayerIDsWithPending, getPlayersWithHistory,
-  getPlayersWithPending, getUserCount, getPlayerRankings
+  getPlayersWithPending, getUserCount, getPlayerRankings, getData
 };
