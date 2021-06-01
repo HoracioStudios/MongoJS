@@ -48,6 +48,35 @@ async function lastT()
       return player.lastT;
 }
 
+async function getPlayerRankings(amount, offset = 0, worst = false)
+{
+    let client = new MongoClient(uri);
+
+    try {
+        await client.connect();
+
+        var database = client.db(databaseName);
+        var collection = database.collection(playerCollection);
+
+        // busca el id exacto del jugador
+        var options = {
+          sort: { rating : worst ? 1 : -1},// RD: worst ? 0 : 1 },
+          skip: offset,
+          limit: amount,
+          projection: { _id: 0, password: 0, salt: 0, email: 0 }
+        };
+
+        var players = await collection.find({}, options);
+
+        players = await players.toArray();
+
+      } finally {
+        await client.close();
+      }
+
+      return players;
+}
+
 async function logUpdate(currentT)
 {
     let client = new MongoClient(uri);
@@ -759,51 +788,9 @@ async function wipePlayerData(playerID, defaultRating, defaultRD) {
       }
 }
 
-//ver cómo hacer el update (aquí o en el server?)
-
-//logUpdate();
-
-/*
-async function test()
-{
-    try
-    {
-        /*
-        var player = await findPlayer(80);
-
-        if(player === null) {
-            console.log("No se ha encontrado");
-        } else {
-            console.log(player);
-        }
-        */
-       /*
-
-        //await addPlayer(1526, { rating: 145, RD: 6767 }, { nick: "pepe", email: "pog@gmail.com", password: "password", salt: "cidoncha", rating: 300000 });
-
-
-        //await updatePlayerRating(80, { rating: 420, RD: 69, volatility: 8989});
-        //await updatePlayerResults(90, [{round: 1, time: 0.5}, {round: 0.5, time: 0.5}, {round: 0, time: 0.5}]);
-        //console.log(await wipePlayerPending(90));
-
-        //await wipePlayerData(90);
-
-        //var player = await findPlayer(80);
-
-        //console.log(await isNickAvailable("pepe"));
-
-        //console.log(await getPlayersWithHistory());
-        //console.log(await getPlayerIDsWithHistory());
-
-    } finally {}
-}
-
-//test().catch(console.dir);
-*/
-
 module.exports = { init,
   lastT, logUpdate, logLogin, findPlayer, findPlayerSafe, findPlayerByLogin, findPlayersInRange, wipePlayerData, wipePlayerPending, deletePlayerByID, deletePlayer,
   updatePlayerRating, updatePlayerResults, isNickAvailable, isEmailAvailable, addPlayer, getAllPlayerIDs,
   getAllPlayers, getPlayerIDsWithHistory, getPlayerIDsWithPending, getPlayersWithHistory,
-  getPlayersWithPending, getUserCount
+  getPlayersWithPending, getUserCount, getPlayerRankings
 };
