@@ -162,7 +162,7 @@ async function findPlayerSafe(query)
 
         // busca el id exacto del jugador
         var options = {
-          projection: { _id: 0, password: 0, salt: 0, email: 0, creation: 0, lastLogin: 0 }
+          projection: { _id: 0, password: 0, salt: 0, email: 0 }
         };
 
         var player = await collection.findOne(query, options);
