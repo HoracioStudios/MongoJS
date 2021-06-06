@@ -689,10 +689,6 @@ async function getData()
       return count;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//FUNCIONES DEPENDIENTES DEL JUEGO: estas funciones son 100% dependientes del juego, lo que hagan estas no se puede aplicar a otros juegos
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 //añade el array gameResults al array pending del jugador con id playerID, esta función depende del 
 async function updatePlayerResults(playerID, gameResult)
 {
@@ -701,114 +697,112 @@ async function updatePlayerResults(playerID, gameResult)
     try {
         await client.connect();
 
-        var win, loss, draw;
-        win = loss = draw = 0;
-
-        let total = 0, count = 0;
-
-        let addTime = 0;
-
-        gameResult.rounds.forEach(round => {
-          total += round.result;
-          count++;
-
-          addTime += round.time;
-        });
-
-        addTime = addTime / 3.0;
-
-        let avg = total / count;
-        if(avg > 0.5) win++;
-        else if (avg < 0.5) loss++;
-        else draw++;
-
         var database = client.db(databaseName);
-        var collection = database.collection(playerCollection);
 
-        // busca el id exacto del jugador
-        var filter = { id: playerID };
-        var options = { };
-        var update = {
-          $push: { pending: gameResult },
-          $inc : { wins: win, losses: loss, draws: draw, totalTime: addTime, totalGames: 1, totalAccuracy: gameResult.accuracy, totalDmg: gameResult.dmgDealt },
-          $set: { lastGame: (new Date()).toString() }
-        };
-
-        var playerChar = gameResult.playerChar.replace(' ', '').replace("(Clone)", '');
-        var rivalChar = gameResult.rivalChar.replace(' ', '').replace("(Clone)", '');
-
-        update.$inc["characterInfo." + playerChar + ".totalGames"] = 1;
-        update.$inc["characterInfo." + playerChar + ".wins"] = win;
-        update.$inc["characterInfo." + playerChar + ".losses"] = loss;
-        update.$inc["characterInfo." + playerChar + ".draws"] = draw;
-        update.$inc["characterInfo." + playerChar + ".totalTime"] = addTime;
-        update.$inc["characterInfo." + playerChar + ".totalAccuracy"] = gameResult.accuracy;
-        update.$inc["characterInfo." + playerChar + ".totalDmg"] = gameResult.dmgDealt;
-        update.$inc["characterInfo." + playerChar + "." + rivalChar + ".totalGames"] = 1;
-        update.$inc["characterInfo." + playerChar + "." + rivalChar + ".wins"] = win;
-
-        var result = await collection.updateOne(filter, update, options);
-
-        collection = database.collection(dataCollection);
-
-        update = { $inc: {} };
-
-        update.$inc["characterInfo." + playerChar + ".totalGames"] = 1;
-        update.$inc["characterInfo." + playerChar + ".wins"] = win;
-        update.$inc["characterInfo." + playerChar + ".losses"] = loss;
-        update.$inc["characterInfo." + playerChar + ".draws"] = draw;
-        update.$inc["characterInfo." + playerChar + ".totalTime"] = addTime;
-        update.$inc["characterInfo." + playerChar + ".totalAccuracy"] = gameResult.accuracy;
-        update.$inc["characterInfo." + playerChar + ".totalDmg"] = gameResult.dmgDealt;
-        update.$inc["characterInfo." + playerChar + "." + rivalChar + ".totalGames"] = 1;
-        update.$inc["characterInfo." + playerChar + "." + rivalChar + ".wins"] = win;
-
-        var result = await collection.updateOne({}, update, options);
-
-        if(DEBUGLOG)
-            console.log(`${result.matchedCount} document(s) matched the filter, updated ${result.modifiedCount} document(s)`);
+        var result = playerDataProcessing(playerID, gameResult, database.collection(playerCollection), database.collection(dataCollection))
 
       } finally {
         await client.close();
       }
 }
 
-//limpia toda la ¡información de juego! del jugador con id playerID (historial, pending, contadores de victoria/derrota/empate)
-async function wipePlayerData(playerID, defaultRating, defaultRD) {
-    let client = new MongoClient(uri);
+async function playerDataProcessing (playerID, gameResult, playerCol, dataCol)
+{
+  // busca el id exacto del jugador
+  var filter = { id: playerID };
+  var options = { };
+  var update = {
+    $push: { pending: gameResult },
+    $set: { lastGame: (new Date()).toString() }
+  };
 
-    try {
-        await client.connect();
+  var result = await collection.updateOne(filter, update, options);
 
-        var database = client.db(databaseName);
-        var collection = database.collection(playerCollection);
+  return result;
+}
 
-        // busca el id exacto del jugador
-        var filter = { id: playerID };
-        
-        var options = {
-          // this option instructs the method to create a document if no documents match the filter
-          // upsert: true
-        };
+async function extraDataProcessing(playerID, gameResult, client)
+{
+  let client = new MongoClient(uri);
 
-        //movemos los contenidos del array pending (copiado) al array history, y eliminamos el array pending (original)
-        var update = { $set: { pending: [], history: [], wins: 0, losses: 0, draws: 0, RD: defaultRD, rating: defaultRating } };        
+  try {
+      await client.connect();
 
-        var result = await collection.updateOne(filter, update, options);
+      var win, loss, draw;
+      win = loss = draw = 0;
 
-        if(DEBUGLOG)
-            console.log(
-                `${result.matchedCount} document(s) matched the filter, updated ${result.modifiedCount} document(s)`
-            );
+      let total = 0, count = 0;
 
-      } finally {
-        await client.close();
-      }
+      let addTime = 0;
+
+      gameResult.rounds.forEach(round => {
+        total += round.result;
+        count++;
+
+        addTime += round.time;
+      });
+
+      addTime = addTime / 3.0;
+
+      let avg = total / count;
+      if(avg > 0.5) win++;
+      else if (avg < 0.5) loss++;
+      else draw++;
+
+      var database = client.db(databaseName);
+      var collection = database.collection(playerCollection);
+
+      // busca el id exacto del jugador
+      var filter = { id: playerID };
+      var options = { };
+      var update = {
+        $push: { pending: gameResult },
+        $inc : { wins: win, losses: loss, draws: draw, totalTime: addTime, totalGames: 1, totalAccuracy: gameResult.accuracy, totalDmg: gameResult.dmgDealt },
+        $set: { lastGame: (new Date()).toString() }
+      };
+
+      var playerChar = gameResult.playerChar.replace(' ', '').replace("(Clone)", '');
+      var rivalChar = gameResult.rivalChar.replace(' ', '').replace("(Clone)", '');
+
+      update.$inc["characterInfo." + playerChar + ".totalGames"] = 1;
+      update.$inc["characterInfo." + playerChar + ".wins"] = win;
+      update.$inc["characterInfo." + playerChar + ".losses"] = loss;
+      update.$inc["characterInfo." + playerChar + ".draws"] = draw;
+      update.$inc["characterInfo." + playerChar + ".totalTime"] = addTime;
+      update.$inc["characterInfo." + playerChar + ".totalAccuracy"] = gameResult.accuracy;
+      update.$inc["characterInfo." + playerChar + ".totalDmg"] = gameResult.dmgDealt;
+      update.$inc["characterInfo." + playerChar + "." + rivalChar + ".totalGames"] = 1;
+      update.$inc["characterInfo." + playerChar + "." + rivalChar + ".wins"] = win;
+
+      var result = await collection.updateOne(filter, update, options);
+
+      collection = database.collection(dataCollection);
+
+      update = { $inc: {} };
+
+      update.$inc["characterInfo." + playerChar + ".totalGames"] = 1;
+      update.$inc["characterInfo." + playerChar + ".wins"] = win;
+      update.$inc["characterInfo." + playerChar + ".losses"] = loss;
+      update.$inc["characterInfo." + playerChar + ".draws"] = draw;
+      update.$inc["characterInfo." + playerChar + ".totalTime"] = addTime;
+      update.$inc["characterInfo." + playerChar + ".totalAccuracy"] = gameResult.accuracy;
+      update.$inc["characterInfo." + playerChar + ".totalDmg"] = gameResult.dmgDealt;
+      update.$inc["characterInfo." + playerChar + "." + rivalChar + ".totalGames"] = 1;
+      update.$inc["characterInfo." + playerChar + "." + rivalChar + ".wins"] = win;
+
+      var result = await collection.updateOne({}, update, options);
+
+      if(DEBUGLOG)
+          console.log(`${result.matchedCount} document(s) matched the filter, updated ${result.modifiedCount} document(s)`);
+
+    } finally {
+      await client.close();
+    }
 }
 
 module.exports = { init,
-  lastT, logUpdate, logLogin, findPlayer, findPlayerSafe, findPlayerByLogin, findPlayersInRange, wipePlayerData, wipePlayerPending, deletePlayerByID, deletePlayer,
+  lastT, logUpdate, logLogin, findPlayer, findPlayerSafe, findPlayerByLogin, findPlayersInRange, wipePlayerPending, deletePlayerByID, deletePlayer,
   updatePlayerRating, updatePlayerResults, isNickAvailable, isEmailAvailable, addPlayer, getAllPlayerIDs,
   getAllPlayers, getPlayerIDsWithHistory, getPlayerIDsWithPending, getPlayersWithHistory,
-  getPlayersWithPending, getUserCount, getPlayerRankings, getData
+  getPlayersWithPending, getUserCount, getPlayerRankings, getData, playerDataProcessing
 };
