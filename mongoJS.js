@@ -699,7 +699,7 @@ async function updatePlayerResults(playerID, gameResult)
 
         var database = client.db(databaseName);
 
-        var result = exports.playerDataProcessing(playerID, gameResult, database.collection(playerCollection), database.collection(dataCollection))
+        var result = module.exports.playerDataProcessing(playerID, gameResult, database.collection(playerCollection), database.collection(dataCollection))
 
       } finally {
         await client.close();
