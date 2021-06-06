@@ -699,7 +699,7 @@ async function updatePlayerResults(playerID, gameResult)
 
         var database = client.db(databaseName);
 
-        var result = playerDataProcessing(playerID, gameResult, database.collection(playerCollection), database.collection(dataCollection))
+        var result = exports.playerDataProcessing(playerID, gameResult, database.collection(playerCollection), database.collection(dataCollection))
 
       } finally {
         await client.close();
@@ -716,7 +716,7 @@ async function playerDataProcessing (playerID, gameResult, playerCol, dataCol)
     $set: { lastGame: (new Date()).toString() }
   };
 
-  var result = await collection.updateOne(filter, update, options);
+  var result = await playerCol.updateOne(filter, update, options);
 
   return result;
 }
