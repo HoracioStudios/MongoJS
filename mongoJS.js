@@ -699,14 +699,14 @@ async function updatePlayerResults(playerID, gameResult)
 
         var database = client.db(databaseName);
 
-        var result = module.exports.playerDataProcessing(playerID, gameResult, database.collection(playerCollection), database.collection(dataCollection))
+        var result = await module.exports.playerDataProcessing(playerID, gameResult, database, playerCollection, dataCollection)
 
       } finally {
         await client.close();
       }
 }
 
-async function playerDataProcessing (playerID, gameResult, playerCol, dataCol)
+async function playerDataProcessing (playerID, gameResult, database, playerCollection, dataCollection)
 {
   // busca el id exacto del jugador
   var filter = { id: playerID };
@@ -715,8 +715,10 @@ async function playerDataProcessing (playerID, gameResult, playerCol, dataCol)
     $push: { pending: gameResult },
     $set: { lastGame: (new Date()).toString() }
   };
+  
+  var collection = database.collection(playerCollection);
 
-  var result = await playerCol.updateOne(filter, update, options);
+  var result = await collection.updateOne(filter, update, options);
 
   return result;
 }
