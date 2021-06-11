@@ -45,6 +45,9 @@ async function lastT()
         await client.close();
       }
 
+      if(!player || !player.lastT)
+        return 0;
+
       return player.lastT;
 }
 
@@ -660,7 +663,7 @@ async function getUserCount()
 
       var count = await collection.findOne({}, {});
 
-      if(count === null) count = 0;
+      if(!count || !count.playerCount) count = 0;
       else count = count.playerCount;
 
       } finally {
