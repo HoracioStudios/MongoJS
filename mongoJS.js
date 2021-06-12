@@ -66,7 +66,7 @@ async function getPlayerRankings(amount, offset = 0, worst = false)
           sort: { rating : worst ? 1 : -1},// RD: worst ? 0 : 1 },
           skip: offset,
           limit: amount,
-          projection: { _id: 0, password: 0, salt: 0, email: 0 }
+          projection: { _id: 0, password: 0, email: 0 }
         };
 
         var players = await collection.find({}, options);
@@ -165,7 +165,7 @@ async function findPlayerSafe(query)
 
         // busca el id exacto del jugador
         var options = {
-          projection: { _id: 0, password: 0, salt: 0, email: 0 }
+          projection: { _id: 0, password: 0, email: 0 }
         };
 
         var player = await collection.findOne(query, options);
@@ -331,7 +331,7 @@ async function updatePlayerRating(playerID, newRatingJSON)
 }
 
 //limpia el array pending del jugador con id playerID y mueve los contenidos a history, además de devolver el documento previo al cambio
-async function wipePlayerPending(playerID)
+async function wipePlayerPending(playerID, currentT = 0)
 {
     let client = new MongoClient(uri);
 
@@ -354,6 +354,7 @@ async function wipePlayerPending(playerID)
         var update = [ { $set: {
                           history: { $cond: [ { $not: ["$history"] }, [], "$history" ] },
                         }},
+                        { $set: {"pending.lastT" : currentT} },
                         { $set: { history: { $concatArrays: [ "$history", "$pending" ] } } },
                         { $set: { pending: [] } } ]
 
@@ -371,44 +372,7 @@ async function wipePlayerPending(playerID)
       return result.value;
 }
 
-//limpia el array pending de todos los jugadores y mueve los contenidos a history, PERO NO DEVUELVE EL ANTERIOR
-/*
-async function wipeAllPending()
-{
-    let client = new MongoClient(uri);
-
-    try {
-        await client.connect();
-
-        var database = client.db(databaseName);
-        var collection = database.collection(playerCollection);
-
-        // busca el id exacto del jugador
-        var filter = { pending: { $exists: true, $not: { $size: 0 } } };
-        
-        var options = {
-          // this option instructs the method to create a document if no documents match the filter
-          // upsert: true
-        };
-
-        //concatenamos los contenidos del array pending al array history, y después limpiamos el array pending
-        //esto es una agregación, y nos sirve para hacer que más de una operación se haga de forma atómica (de forma que, por ejemplo, no se añadan cosas a pending entre que concatenamos y borramos)
-        var update = [ { $set: { history: { $concatArrays: [ "$history", "$pending" ] } } }, { $set: { pending: [] } } ]
-
-        var result = await collection.findOneAndUpdate(filter, update, options);
-
-        if(DEBUGLOG)
-            console.log(
-                `${result.matchedCount} document(s) matched the filter, updated ${result.modifiedCount} document(s)`
-            );
-
-      } finally {
-        await client.close();
-      }
-}
-*/
-
-//añade un nuevo jugador de id playerID, con los parámetros por defecto de defaultParametersJSON, y con la información que se le pase en playerInfoJSON (nick, password, salt, email, etc)
+//añade un nuevo jugador de id playerID, con los parámetros por defecto de defaultParametersJSON, y con la información que se le pase en playerInfoJSON (nick, password, email, etc)
 async function addPlayer(playerID, defaultParametersJSON, playerInfoJSON)
 {
     let client = new MongoClient(uri);
@@ -711,19 +675,28 @@ async function updatePlayerResults(playerID, gameResult)
 
 async function playerDataProcessing (playerID, gameResult, database, playerCollection, dataCollection)
 {
-  // busca el id exacto del jugador
-  var filter = { id: playerID };
-  var options = { };
-  var update = {
-    $push: { pending: gameResult },
-    $set: { lastGame: (new Date()).toString() }
-  };
-  
-  var collection = database.collection(playerCollection);
+  try
+  {
+    // busca el id exacto del jugador
+    var filter = { id: playerID };
+    var options = { };
+    var update = {
+      $push: { pending: gameResult },
+      $set: { lastGame: (new Date()).toString() }
+    };
+    
+    var collection = database.collection(playerCollection);
 
-  var result = await collection.updateOne(filter, update, options);
+    var result = await collection.updateOne(filter, update, options);
 
-  return result;
+    return result;
+  }
+  catch(error)
+  {
+    console.log(error);
+  }
+
+  return undefined;
 }
 
 module.exports = { init,
